@@ -1,9 +1,11 @@
 # Spécifications Fonctionnelles & Techniques — Application `parties`
 
+> Révision du 21 novembre 2026 — enjeux différés des parties libres et règle des « Jeudis à la mêlée ». Document de spécification ; les fonctionnalités décrites ne sont pas toutes implémentées.
+
 ## 1. Présentation Générale
 
 L'application **`parties`** est une solution logicielle dédiée à la gestion, au suivi du score, à la traçabilité et aux traditions conviviales du jeu de **pétanque**.
-Elle permet d'organiser des **parties libres** et des séries de duels (Revanche, La Belle) entre deux équipes, tout en gérant la géolocalisation, les engagements (dettes/gages individuels ou d'équipe), la non-simultanéité des joueurs et l'historique complet des résultats.
+Elle permet d'organiser des **parties libres**, des **tournois** et des séries de duels (Revanche, La Belle) entre deux équipes, tout en gérant la géolocalisation, les engagements (dettes/gages individuels ou d'équipe), la non-simultanéité des joueurs et l'historique complet des résultats.
 
 ---
 
@@ -40,14 +42,14 @@ Chaque partie est rigoureusement contextualisée dans le temps et dans l'espace.
 
 ### 2.4 Enjeu, Dettes et Gages de Convivialité (« Le Carnet de Dettes »)
 
-Fidèle à la tradition de la pétanque, la partie permet de formaliser un enjeu amical (ex: un verre à boire, une tournée, un café, etc.) qui donne lieu à une ou plusieurs **dettes**.
+Fidèle à la tradition de la pétanque, la partie permet de formaliser un enjeu amical (ex: un verre à boire, une tournée, un café, etc.) qui donne lieu à une ou plusieurs **dettes uniquement lorsque la condition de déclenchement convenue est satisfaite**. L'enjeu décrit ce qui est promis ; la dette désigne une obligation effectivement acquise. Sans enjeu, aucune dette n'est créée.
 
 #### A. Nature Individuelle de la Dette
 - **Principe général** : La dette est **individuelle**, quel que soit le format de jeu (Tête-à-tête, Doublette ou Triplette).
 - Chaque dette relie précisément deux personnes :
   - **Le Créancier** : La personne (joueur) à qui la dette est due (généralement un membre de l'équipe gagnante).
   - **Le Débiteur** : La personne (joueur) qui doit la dette (généralement un membre de l'équipe perdante).
-- *Exemple en Triplette (3 vs 3)* : Par défaut, la partie génère 3 dettes individuelles (chacun des 3 perdants doit un verre à l'un des 3 gagnants).
+- *Exemple en Triplette (3 vs 3)* : Lorsque l'enjeu devient dû, 3 dettes individuelles sont créées, une par joueur de l'équipe redevable envers un joueur de l'équipe bénéficiaire. En partie libre, les perdants sont redevables ; la règle spéciale des Jeudis à la mêlée peut inverser ces rôles.
 
 #### B. Prise en Charge Exclusive par un Coéquipier (« Régaler l'équipe »)
 - **Règle de solidarité** : Un joueur de l'équipe peut décider volontairement de **prendre la dette pour lui tout seul** (assumer l'intégralité des dettes dues par son équipe).
@@ -73,6 +75,51 @@ Chaque dette enregistre de manière immuable :
 - Le statut courant : **`OUVERTE`** ou **`FERMÉE`**.
 - La **date et heure de fermeture / acquittement** (dès qu'elle est honorée).
 - La mention de prise en charge solitaire le cas échéant.
+- L'identifiant de l'enjeu d'origine, la règle appliquée et la partie ou manche qui l'a déclenché.
+
+---
+
+#### E. Parties libres : choix du déclenchement à la fin de la première partie
+
+À la clôture de la première partie, avant toute création ou tout règlement des dettes, les joueurs peuvent conserver l'enjeu de cette partie ou décider de le reporter :
+
+| Choix | Condition de déclenchement | Création des dettes |
+|---|---|---|
+| Première partie | Résultat de la première partie confirmé | Les perdants doivent l'enjeu aux gagnants de cette partie. |
+| Revanche | L'équipe gagnante de la première partie gagne aussi la revanche | Les perdants doivent l'enjeu à cette équipe après sa deuxième victoire. |
+| Belle | Une Belle est jouée après une égalité à 1–1 | Les perdants de la Belle doivent l'enjeu aux gagnants de la Belle. |
+
+- Le choix est enregistré et horodaté à la fin de la première partie, avant le lancement de la revanche. Le résultat sportif reste immédiatement enregistré.
+- Un enjeu différé reste **EN_ATTENTE** : aucune dette ouverte ou fermée n'est créée au titre de la première partie ou d'une manche intermédiaire.
+- L'enjeu est unique pour la séquence concernée : sa validation génère un seul lot de dettes nominatives, sans multiplication par le nombre de manches. Un second traitement du même résultat ne doit pas recréer de dettes.
+- La condition d'acquisition (première partie, revanche ou Belle) est indépendante de l'échéance de consommation (tout de suite ou plus tard), qui s'applique seulement après acquisition.
+- Une condition non réalisée ne déclenche aucune dette. Si la séquence se termine sans satisfaire cette condition, l'enjeu devient **NON_DU** ; si elle est seulement interrompue puis reprise, il reste **EN_ATTENTE**.
+- Les modalités précises suivantes sont des **conventions proposées à valider** : en mode Revanche, une égalité à 1–1 ne reporte pas automatiquement l'enjeu sur la Belle ; en mode Belle, un résultat 2–0 sans Belle ne déclenche pas l'enjeu. Ces cas ne doivent pas être confondus avec un enjeu général au vainqueur de la série.
+- Une fois le choix confirmé, il ne peut pas réaffecter des dettes déjà créées ou honorées. La décision et son historique sont conservés.
+
+#### F. Tournois : enjeux optionnels
+
+- Un tournoi peut être organisé **avec ou sans enjeu**. Le choix est explicite dans sa configuration.
+- Sans enjeu : aucune dette n'est générée, quel que soit le score. Cela ne supprime ni ne modifie les anciennes dettes.
+- Avec enjeu : sa nature, son échéance et la règle d'attribution sont affichées avant le début des parties concernées et conservées avec leurs résultats.
+- Les conditions Revanche et Belle des parties libres ne s'appliquent pas automatiquement aux parties d'un tournoi.
+- Les autres règles d'organisation des tournois (tirage, classement, nombre de tours) ne sont pas définies par cette révision.
+
+#### G. Tournoi « Les jeudis à la mêlée » : seuil de 7 points
+
+Lorsqu'un enjeu est activé, pour chaque partie terminée, l'application examine **le score final de l'équipe perdante** :
+
+| Score final des perdants | Équipe qui paie l'enjeu | Équipe bénéficiaire |
+|---|---|---|
+| De 0 à 6 points inclus | Les perdants | Les gagnants |
+| 7 points ou plus | Les gagnants | Les perdants |
+
+- Le seuil s'applique au score de cette partie, pas au cumul des points du tournoi. Exactement **7 points** fait payer les gagnants ; exactement **6 points** fait payer les perdants.
+- Exemples : **13–6**, les perdants paient ; **13–7**, les gagnants paient ; **13–12**, les gagnants paient.
+- Le résultat sportif n'est pas inversé : le gagnant reste gagnant même lorsqu'il doit l'enjeu.
+- Les dettes restent nominatives : un joueur de l'équipe redevable doit à un joueur de l'équipe bénéficiaire. La prise en charge exclusive est proposée aux joueurs de **l'équipe redevable**, même s'il s'agit des gagnants.
+- Sans enjeu activé, aucun de ces scores ne génère de dette.
+- Un résultat doit désigner un gagnant et un perdant avant tout calcul de dette. Le traitement spécifique des forfaits, annulations et arrêts anticipés dans ce type de tournoi reste à préciser ; aucune règle spéciale ne doit être inventée silencieusement.
 
 ---
 
@@ -103,7 +150,7 @@ Chaque dette enregistre de manière immuable :
 - Le score final exact de chaque équipe.
 - La date, l'heure de début et l'heure exacte de fin.
 - Le lieu complet (adresse, code postal, ville, pays).
-- Les dettes créées (créancier, débiteur, statut ouverte/fermée, date).
+- Le choix de déclenchement et le statut de l’enjeu (en attente, dû ou non dû), la règle appliquée et les dettes effectivement créées (créancier, débiteur, statut ouverte/fermée, date).
 - L'appartenance éventuelle à une série de duels (Revanche / La Belle).
 
 ---
@@ -122,6 +169,7 @@ L'application gère nativement le cycle traditionnel de duel en série :
    - L'application regroupe ces parties sous une même entité logique de **Série / Duel**.
    - Elle mémorise la filiation : `Partie Initiale` ➔ `Revanche` ➔ `La Belle`.
    - L'historique permet de consulter la série dans son ensemble (score global des manches, cumul des points, cumul et bilan des dettes).
+   - L'enjeu différé choisi à la fin de la première partie est conservé et évalué à la manche prévue, sans générer une dette pour chaque manche.
 
 ---
 
@@ -139,9 +187,17 @@ L'application gère nativement le cycle traditionnel de duel en série :
 | **BR-08** | **Désignation Gagnant / Perdant** | Toute partie terminée identifie sans ambiguïté 1 Équipe Gagnante et 1 Équipe Perdante (avec archivage de l'heure de fin). | Obligatoire |
 | **BR-09** | **Dette nominative individuelle** | La dette est nominative et individuelle entre un **Débiteur** (joueur) et un **Créancier** (joueur), enregistrée avec sa date. | Obligatoire |
 | **BR-10** | **Statut Ouverte / Fermée** | Une dette est créée avec le statut **`OUVERTE`**. L'application permet de la marquer comme honorée, passant son statut à **`FERMÉE`** avec horodatage de fermeture. | Obligatoire |
-| **BR-11** | **Prise en charge exclusive de dette** | Un joueur de l'équipe perdante peut assumer seul la totalité des dettes de l'équipe. L'application consigne explicitement ce fait. | Majeure |
+| **BR-11** | **Prise en charge exclusive de dette** | Un joueur de l'équipe redevable (perdante ou gagnante selon la règle) peut assumer seul la totalité des dettes de son équipe. L'application consigne explicitement ce fait. | Majeure |
 | **BR-12** | **Enchaînement Revanche** | À la fin d'une partie, une Revanche peut être générée immédiatement en liant la nouvelle partie à la précédente. | Majeure |
 | **BR-13** | **Déclenchement de La Belle** | Si le score de la série est de 1 manche partout après la Revanche, une 3ème partie « La Belle » est autorisée pour départager les équipes. | Majeure |
+
+
+| **BR-14** | **Choix différé en partie libre** | À la fin de la première partie, choix horodaté du déclenchement : première partie, revanche gagnée aussi par le premier gagnant ou Belle. | Majeure |
+| **BR-15** | **Pas de dette avant acquisition** | Un enjeu en attente ne crée aucune dette ; un enjeu acquis ne génère qu'un lot de dettes, même si le résultat est retraité. | Bloquante |
+| **BR-16** | **Tournoi sans enjeu** | L'enjeu est optionnel ; son absence interdit toute génération de dette liée au tournoi. | Bloquante |
+| **BR-17** | **Jeudis : score perdant ≤ 6** | Avec enjeu, les perdants paient lorsque leur score final est de 0 à 6 inclus. | Bloquante |
+| **BR-18** | **Jeudis : score perdant ≥ 7** | Avec enjeu, les gagnants paient lorsque le score final des perdants atteint 7 points ou plus. | Bloquante |
+| **BR-19** | **Résultat et dette distincts** | Le payeur peut être gagnant ; le résultat sportif reste inchangé. | Obligatoire |
 
 ---
 
@@ -149,6 +205,11 @@ L'application gère nativement le cycle traditionnel de duel en série :
 
 ```mermaid
 erDiagram
+    TOURNOI o|--o{ PARTIE : "contient"
+    ENJEU o|--o{ DETTE : "déclenche après acquisition"
+    SERIE_PARTIES o|--o{ ENJEU : "porte"
+    PARTIE o|--o{ ENJEU : "contexte initial"
+    TOURNOI o|--o{ ENJEU : "configure"
     LIEU ||--o{ PARTIE : "se déroule à"
     SERIE_PARTIES ||--o{ PARTIE : "regroupe"
     JOUEUR ||--o{ COMPOSITION_EQUIPE : participe
@@ -159,6 +220,29 @@ erDiagram
     PARTIE ||--o{ DETTE : "génère"
     JOUEUR ||--o{ DETTE : "est créancier de"
     JOUEUR ||--o{ DETTE : "est débiteur de"
+
+    TOURNOI {
+        string id PK
+        string type "LES_JEUDIS_A_LA_MELEE | AUTRE"
+        boolean enjeu_active
+        string regle_enjeu "SEUIL_PERDANT_7 | AUTRE"
+    }
+
+    ENJEU {
+        string id PK
+        string partie_initiale_id FK
+        string serie_id FK "Optionnel"
+        string tournoi_id FK "Optionnel"
+        string description
+        string declenchement "PREMIERE_PARTIE | REVANCHE | BELLE | PARTIE_TOURNOI"
+        string echeance "IMMEDIATE | PLUS_TARD"
+        string statut "EN_ATTENTE | DU | NON_DU"
+        datetime date_choix
+        string partie_declencheuse_id FK "Renseigné si acquis"
+        string equipe_redevable_id FK "Renseigné si acquis"
+        string equipe_beneficiaire_id FK "Renseigné si acquis"
+        string regle_appliquee
+    }
 
     LIEU {
         string id PK
@@ -194,6 +278,7 @@ erDiagram
     PARTIE {
         string id PK
         string serie_id FK "Optionnel (si intégrée à une série)"
+        string tournoi_id FK "Optionnel"
         string type_manche "INITIALE | REVANCHE | BELLE | INDEPENDANTE"
         string format "1V1 | 2V2 | 3V3"
         string lieu_id FK
@@ -213,7 +298,8 @@ erDiagram
 
     DETTE {
         string id PK
-        string partie_id FK
+        string partie_id FK "Partie déclencheuse"
+        string enjeu_id FK
         string creancier_id FK "Joueur qui bénéficie de la dette"
         string debiteur_id FK "Joueur qui doit la dette"
         string description "ex: Verre à boire, Tournée, Café"
@@ -260,10 +346,13 @@ erDiagram
 - Bouton de clôture anticipée avec saisie de motif en cas d'arrêt avant 13 points.
 
 ### Écran 3 : Clôture, Proclamation & Répartition des Dettes
+- **Fin de la première partie libre** : afficher le choix « Enjeu sur cette partie », « Seulement si les gagnants gagnent aussi la revanche », « Enjeu sur la Belle ». Confirmer ce choix avant de générer les dettes.
+- **Enjeu différé** : afficher la condition et « En attente » ; ne proposer ni règlement ni reprise exclusive tant qu'aucune dette n'est acquise.
+- **Tournoi Les jeudis à la mêlée** : afficher le score des perdants et l'explication « 7 points ou plus : les gagnants paient » ou « 0 à 6 points : les perdants paient », uniquement si un enjeu est activé.
 - Horodatage immédiat de l'heure de fin.
 - Proclamation officielle du **Gagnant** et du **Perdant** avec le score final.
 - **Gestion des Dettes de la partie** :
-  - Liste nominative des dettes générées (par défaut individuelle : chaque perdant doit à un gagnant).
+  - Liste nominative des dettes effectivement acquises : chaque joueur redevable doit à un joueur bénéficiaire selon la règle appliquée.
   - Option solidaire d'équipe : Case à cocher **« [Nom du joueur] prend toute la dette pour l'équipe »**.
     - *Si activée* : Toutes les dettes sont assignées à ce joueur comme unique débiteur, avec mention spéciale dans l'application.
   - Action immédiate :
@@ -276,6 +365,7 @@ erDiagram
 - Si l'équipe battue en Manche 1 gagne la Revanche :
   - L'écran affiche l'égalité : **1 manche à 1**.
   - L'application propose automatiquement le bouton : **« Lancer La Belle (Manche Décisive) »**.
+- Afficher à chaque manche le choix d’enjeu enregistré, son statut et les éventuelles dettes déclenchées, sans doublon.
 - Clôture de La Belle :
   - Proclamation du **Vainqueur Final de la Série**.
   - Historique complet des 3 manches consécutives avec leurs scores, durées et cumul des dettes (ouvertes et fermées).
@@ -288,6 +378,11 @@ erDiagram
   - Bouton d'action rapide : **« Marquer comme honorée »** (fait passer la dette de `OUVERTE` à `FERMÉE` avec horodatage).
 
 ---
+
+### Écran 6 : Paramétrage des enjeux du tournoi
+- Interrupteur explicite « Avec enjeu / Sans enjeu ».
+- Si activé : nature, échéance et règle affichées avant le lancement.
+- Pour « Les jeudis à la mêlée » : rappel permanent du seuil 7 points et de l'équipe redevable.
 
 ## 6. Synthèse des Données Mémorisées par l'Application
 
@@ -303,3 +398,22 @@ L'application conserve en base persistante pour chaque partie :
   - Statut : **`OUVERTE`** ou **`FERMÉE`** (savoir si elle a été honorée).
   - Traçabilité de la **prise en charge pour soi tout seul** par un coéquipier.
 - ✅ **Lien de série** : Filiation Revanche / La Belle avec désignation du vainqueur final de la confrontation.
+
+- **Enjeu et contexte** : activation ou absence d'enjeu, condition choisie, date du choix, statut d'acquisition, lien au tournoi ou à la série et règle appliquée.
+- **Traçabilité du seuil** : score final des perdants et identité de l'équipe redevable distincte du résultat sportif.
+
+## 7. Critères de recette de la révision
+
+| Situation | Résultat attendu |
+|---|---|
+| Première partie terminée, choix non confirmé | Résultat sportif conservé ; aucune dette à régler avant le choix. |
+| Enjeu sur la revanche ; même équipe gagne les deux manches | Un seul lot de dettes après la revanche. |
+| Enjeu sur la Belle ; série à 1–1 | Aucune dette avant la Belle ; un seul lot à son résultat. |
+| Tournoi sans enjeu, résultat 13–7 | Aucune dette. |
+| Jeudis avec enjeu, résultat 13–0 ou 13–6 | Les perdants sont redevables. |
+| Jeudis avec enjeu, résultat 13–7 ou 13–12 | Les gagnants sont redevables. |
+| Résultat déclencheur traité une seconde fois | Aucune dette supplémentaire. |
+| Gagnants redevables, un gagnant régale son équipe | Reprise exclusive autorisée pour ce gagnant ; débiteurs initiaux conservés. |
+| Enjeu différé non acquis | Aucun bouton pour honorer une dette inexistante. |
+
+Les conventions proposées et les cas particuliers signalés en section 2.4 restent distincts des règles expressément confirmées. Cette révision ne vaut pas implémentation du mode tournoi dans l'application.
